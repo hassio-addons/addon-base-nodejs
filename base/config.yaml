@@ -1,0 +1,10 @@
+---
+name: NodeJS Base Image
+version: dev
+slug: base-nodejs
+description: Docker NodeJS base images used by Home Assistant Community Add-ons.
+url: https://github.com/hassio-addons/addon-base-nodejs
+arch:
+  - aarch64
+  - amd64
+  - armv7
