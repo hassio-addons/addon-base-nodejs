@@ -1,73 +1,94 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:15.0.3
+ARG BUILD_FROM=node:18-alpine3.19
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
+# Environment variables
+ENV \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true \
+    HOME="/root" \
+    LANG="C.UTF-8" \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_EXTRA_INDEX_URL="https://wheels.home-assistant.io/musllinux-index/" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_PREFER_BINARY=1 \
+    PS1="$(whoami)@$(hostname):$(pwd)$ " \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
+    S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
+    S6_CMD_WAIT_FOR_SERVICES=1 \
+    YARN_HTTP_TIMEOUT=1000000 \
+    TERM="xterm-256color" 
+
 # Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
-# NodeJS version to pack
-ARG NODEJS_VERSION="18.19.0"
-
-# hadolint ignore=DL3003,DL4006,SC2155,DL3018,SC2046
+# Install base system
+ARG BUILD_ARCH=amd64
+ARG BASHIO_VERSION="v0.16.2"
+ARG S6_OVERLAY_VERSION="3.1.6.2"
+ARG TEMPIO_VERSION="2021.09.0"
 RUN \
-    apk add --no-cache \
-      libstdc++=13.2.1_git20231014-r0 \
-    && ARCH= OPENSSL_ARCH='linux*' \
-    && alpineArch="$(apk --print-arch)" \
-    && case "${alpineArch##*-}" in \
-      x86_64) OPENSSL_ARCH=linux-x86_64;; \
-      x86) OPENSSL_ARCH=linux-elf;; \
-      aarch64) OPENSSL_ARCH=linux-aarch64;; \
-      arm*) OPENSSL_ARCH=linux-armv4;; \
-      *) ;; \
-    esac \
-  && apk add --no-cache --virtual .build-deps-full \
-    binutils-gold=2.41-r0 \
-    g++=13.2.1_git20231014-r0 \
-    gcc=13.2.1_git20231014-r0 \
-    gnupg=2.4.3-r1 \
-    libgcc=13.2.1_git20231014-r0 \
-    linux-headers=6.5-r0 \
-    make=4.4.1-r2 \
-    python3=3.11.6-r1 \
-  && export GNUPGHOME="$(mktemp -d)" \
-  # gpg keys listed at https://github.com/nodejs/node#release-keys
-  && for key in \
-    4ED778F539E3634C779C87C6D7062848A1AB005C \
-    141F07595B7B3FFE74309A937405533BE57C7D57 \
-    74F12602B6F1C4E913FAA37AD3A89613643B6201 \
-    DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7 \
-    61FC681DFB92A079F1685E77973F295594EC4689 \
-    8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
-    C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
-    890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 \
-    C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
-    108F52B48DB57BB0CC439B2997B01419BD92F80A \
-    A363A499291CBBC940DD62E41F10027AF002F8B0 \
-  ; do \
-    gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" || \
-    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" ; \
-  done \
-  && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODEJS_VERSION/node-v$NODEJS_VERSION.tar.xz" \
-  && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODEJS_VERSION/SHASUMS256.txt.asc" \
-  && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-  && gpgconf --kill all \
-  && rm -rf "$GNUPGHOME" \
-  && grep " node-v$NODEJS_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-  && tar -xf "node-v$NODEJS_VERSION.tar.xz" \
-  && cd "node-v$NODEJS_VERSION" \
-  && ./configure \
-  && make -j$(getconf _NPROCESSORS_ONLN) V= \
-  && make install \
-  && apk del .build-deps-full \
-  && cd .. \
-  && rm -Rf "node-v$NODEJS_VERSION" \
-  && rm "node-v$NODEJS_VERSION.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
-  # Remove unused OpenSSL headers to save ~34MB. See this NodeJS issue: https://github.com/nodejs/node/issues/46451
-  && find /usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \; \
-  # smoke tests
-  && node --version \
-  && npm --version
+    set -o pipefail \
+    \
+    && apk add --no-cache --virtual .build-dependencies \
+        tar=1.35-r2 \
+        xz=5.4.5-r0 \
+    \
+    && apk add --no-cache \
+        libcrypto3=3.1.4-r2 \
+        libssl3=3.1.4-r2 \
+        musl-utils=1.2.4_git20230717-r4 \
+        musl=1.2.4_git20230717-r4 \
+        libstdc++=13.2.1_git20231014-r0 \
+    \
+    && apk add --no-cache \
+        bash=5.2.21-r0 \
+        curl=8.5.0-r0 \
+        jq=1.7.1-r0 \
+        tzdata=2023d-r0 \
+    \
+    && S6_ARCH="${BUILD_ARCH}" \
+    && if [ "${BUILD_ARCH}" = "i386" ]; then S6_ARCH="i686"; \
+    elif [ "${BUILD_ARCH}" = "amd64" ]; then S6_ARCH="x86_64"; \
+    elif [ "${BUILD_ARCH}" = "armv7" ]; then S6_ARCH="arm"; fi \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -J -L -o /tmp/bashio.tar.gz \
+        "https://github.com/hassio-addons/bashio/archive/${BASHIO_VERSION}.tar.gz" \
+    && mkdir /tmp/bashio \
+    && tar zxvf \
+        /tmp/bashio.tar.gz \
+        --strip 1 -C /tmp/bashio \
+    \
+    && mv /tmp/bashio/lib /usr/lib/bashio \
+    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
+    \
+    && curl -L -s -o /usr/bin/tempio \
+        "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}" \
+    && chmod a+x /usr/bin/tempio \
+    \
+    && apk del --no-cache --purge .build-dependencies \
+    && rm -f -r \
+        /tmp/*
+
+# Copy root filesystem
+COPY rootfs /
+
+# Copy s6-overlay adjustments
+COPY s6-overlay /package/admin/s6-overlay-${S6_OVERLAY_VERSION}/
 
 # Entrypoint & CMD
 ENTRYPOINT ["/init"]
@@ -93,7 +114,7 @@ LABEL \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.url="https://addons.community" \
     org.opencontainers.image.source="https://github.com/${BUILD_REPOSITORY}" \
-    org.opencontainers.image.documentation="https://github.com/${BUILD_REPOSITORY}/blob/master/README.md" \
+    org.opencontainers.image.documentation="https://github.com/${BUILD_REPOSITORY}/blob/main/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}

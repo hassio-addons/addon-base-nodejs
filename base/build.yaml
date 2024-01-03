@@ -1,7 +1,7 @@
 ---
 build_from:
-  aarch64: ghcr.io/hassio-addons/base:15.0.3
-  amd64: ghcr.io/hassio-addons/base:15.0.3
-  armv7: ghcr.io/hassio-addons/base:15.0.3
+  aarch64: node:18-alpine3.19@sha256:91f3cd192c9f1a1a907b8f53bb8cf737557e6c1bb9dc499a725e48ba6ced58fd
+  amd64: node:18-alpine3.19@sha256:8842b060b01af71c082cee310b428a2d825e940d9fd9e450e05d726aea66a480
+  armv7: node:18-alpine3.19@sha256:62013ecc8888100e31f2e19698756d39e41a53e0047f766c868508701d668715
 codenotary:
   signer: codenotary@frenck.dev
