@@ -29,7 +29,7 @@ These are the NodeJS add-on base images for the
 Home Assistant Community Add-ons and are created to give the project more
 control over the NodeJS version used.
 
-Main reason for this, is because in Alpine 3.19 shipped with NodeJS v20,
+Main reason for this, is because in Alpine 3.20 shipped with NodeJS v20,
 which, at the time of writing, could not be used on armv7 when building Docker
 images. This is caused by a QEMU bug, which has been known since 2020.
 
