@@ -1,7 +1,7 @@
 ---
 build_from:
-  aarch64: node:18.20.3-alpine3.19
-  amd64: node:18.20.3-alpine3.19
-  armv7: node:18.20.3-alpine3.19
+  aarch64: node:18.20.4-alpine3.19
+  amd64: node:18.20.4-alpine3.19
+  armv7: node:18.20.4-alpine3.19
 codenotary:
   signer: codenotary@frenck.dev
