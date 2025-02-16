@@ -23,6 +23,15 @@
 
 Docker NodeJS base images used by Home Assistant Community Add-ons.
 
+## Archive notice
+
+This repository has been archived, we no longer using this base image in our
+add-ons. We therefore no longer need to maintain this repository.
+
+If you run into issues cross building NodeJS 18+ using Docker buildx using
+QEMU, than we recommend switching to using the arm64 runners provided by
+GitHub Actions instead. This circumvents the QEMU issue.
+
 ## About
 
 These are the NodeJS add-on base images for the
